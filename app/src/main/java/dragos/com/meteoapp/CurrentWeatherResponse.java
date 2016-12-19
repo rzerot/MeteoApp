@@ -2,6 +2,8 @@ package dragos.com.meteoapp;
 
 import com.google.gson.annotations.SerializedName;
 
+import java.util.ArrayList;
+
 import dragos.com.meteoapp.Model.CurrentWeather;
 
 /**
@@ -10,13 +12,13 @@ import dragos.com.meteoapp.Model.CurrentWeather;
 
 public class CurrentWeatherResponse {
     @SerializedName("weather")
-    private CurrentWeather currentWeather;
+    private ArrayList<CurrentWeather> currentWeather;
 
-    public CurrentWeather getCurrentWeather() {
+    public ArrayList<CurrentWeather> getCurrentWeather() {
         return currentWeather;
     }
 
-    public void setCurrentWeather(CurrentWeather currentWeather) {
+    public void setCurrentWeather(ArrayList<CurrentWeather> currentWeather) {
         this.currentWeather = currentWeather;
     }
 }

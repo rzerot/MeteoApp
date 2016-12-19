@@ -19,6 +19,7 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 
@@ -28,7 +29,7 @@ import retrofit2.Call;
 import retrofit2.Callback;
 import retrofit2.Response;
 
-public class MainActivity extends AppCompatActivity implements LocationListener {
+public class MainActivity extends AppCompatActivity {
     Button btnShowLocation;
     String provider;
     LocationManager locationManager;
@@ -38,8 +39,10 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
     TextView postalCode;
     Geocoder geocoder;
     List<Address> addressList;
-    CurrentWeather currentWeather;
+    ArrayList<CurrentWeather> currentWeather;
     public static final String TAG = MainActivity.class.getSimpleName();
+    private LocationListener locationListener;
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -54,8 +57,69 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         postalCode = (TextView) findViewById(R.id.postalcode);
         locationManager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
 
+        locationListener = new LocationListener() {
+            @Override
+            public void onLocationChanged(Location location) {
+                Log.d(TAG, "onLocationChanged");
+                try {
+                    addressList = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+                double lat = location.getLatitude();
+                double lon = location.getLongitude();
+                System.out.println("ALOHAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA: " + lat);
+                latitude.setText(String.valueOf(lat));
+                longitude.setText(String.valueOf(lon));
+
+                RestClient.getApi()
+                        .getCurrentWeather(addressList.get(0).getLocality() + "," + addressList.get(0).getCountryCode())
+                        .enqueue(new Callback<CurrentWeatherResponse>() {
+                            @Override
+                            public void onResponse(Call<CurrentWeatherResponse> call, Response<CurrentWeatherResponse> response) {
+                                currentWeather = response.body().getCurrentWeather();
+                                address.setText(String.valueOf(currentWeather.get(0).getDescription()));
+//                                postalCode.setText(String.valueOf(currentWeather.getTemp()));
+//                                Log.e("TAG", currentWeather.getDescription());
+                            }
+
+                            @Override
+                            public void onFailure(Call<CurrentWeatherResponse> call, Throwable t) {
+                                t.printStackTrace();
+                            }
+                        });
+            }
+
+            @Override
+            public void onStatusChanged(String s, int i, Bundle bundle) {
+
+            }
+
+            @Override
+            public void onProviderEnabled(String s) {
+
+            }
+
+            @Override
+            public void onProviderDisabled(String s) {
+
+            }
+        };
+
         Criteria criteria = new Criteria();
-        provider = locationManager.getBestProvider(criteria, false);
+        provider = locationManager.NETWORK_PROVIDER;
+
+
+        btnShowLocation.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                if (ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(MainActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+                    return;
+                }
+                locationManager.requestLocationUpdates(provider, 0, 0, locationListener);
+            }
+        });
 
 
         if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
@@ -65,28 +129,17 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
         Location location = locationManager.getLastKnownLocation(provider);
 
         if (location != null) {
-            onLocationChanged(location);
+            locationListener.onLocationChanged(location);
         } else {
-            Log.i(TAG, "bug off");
+            Log.i(TAG, "bug off" + provider.toString());
+            if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED && ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
 
+                return;
+            }
+            locationManager.requestLocationUpdates(provider, 0, 0, locationListener);
+            Log.d(TAG, " locationManager.requestLocationUpdates");
         }
 
-        RestClient.getApi()
-                .getCurrentWeather(addressList.get(0).getLocality() + "," + addressList.get(0).getCountryCode())
-                .enqueue(new Callback<CurrentWeatherResponse>() {
-                    @Override
-                    public void onResponse(Call<CurrentWeatherResponse> call, Response<CurrentWeatherResponse> response) {
-                        currentWeather = response.body().getCurrentWeather();
-                        address.setText(String.valueOf(currentWeather.getDescription()));
-                        postalCode.setText(String.valueOf(currentWeather.getTemp()));
-                        Log.e("TAG", currentWeather.getDescription());
-                    }
-
-                    @Override
-                    public void onFailure(Call<CurrentWeatherResponse> call, Throwable t) {
-                        Log.e("TAG","FAILLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLl");
-                    }
-                });
 
     }
 
@@ -97,24 +150,24 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
             return;
         }
-        locationManager.requestLocationUpdates(provider, 600, 1, this);
-        RestClient.getApi()
-                .getCurrentWeather(addressList.get(0).getLocality() + "," + addressList.get(0).getCountryCode())
-                .enqueue(new Callback<CurrentWeatherResponse>() {
-                    @Override
-                    public void onResponse(Call<CurrentWeatherResponse> call, Response<CurrentWeatherResponse> response) {
-                        currentWeather = (response.body().getCurrentWeather());
-                        Log.e("TAG", String.valueOf(currentWeather.getHumidity()));
-                        address.setText(String.valueOf(currentWeather.getDescription()));
-                        postalCode.setText(String.valueOf(currentWeather.getTemp()));
-                        Log.e("TAG", currentWeather.getDescription());
-                    }
-
-                    @Override
-                    public void onFailure(Call<CurrentWeatherResponse> call, Throwable t) {
-
-                    }
-                });
+        locationManager.requestLocationUpdates(provider, 600, 1, locationListener);
+//        RestClient.getApi()
+//                .getCurrentWeather(addressList.get(0).getLocality() + "," + addressList.get(0).getCountryCode())
+//                .enqueue(new Callback<CurrentWeatherResponse>() {
+//                    @Override
+//                    public void onResponse(Call<CurrentWeatherResponse> call, Response<CurrentWeatherResponse> response) {
+//                        currentWeather = (response.body().getCurrentWeather());
+//                        Log.e("TAG", String.valueOf(currentWeather.getHumidity()));
+//                        address.setText(String.valueOf(currentWeather.getDescription()));
+//                        postalCode.setText(String.valueOf(currentWeather.getTemp()));
+//                        Log.e("TAG", currentWeather.getDescription());
+//                    }
+//
+//                    @Override
+//                    public void onFailure(Call<CurrentWeatherResponse> call, Throwable t) {
+//
+//                    }
+//                });
     }
 
     @Override
@@ -124,36 +177,8 @@ public class MainActivity extends AppCompatActivity implements LocationListener 
 
             return;
         }
-        locationManager.removeUpdates(this);
+        locationManager.removeUpdates(locationListener);
     }
 
-    @Override
-    public void onLocationChanged(Location location) {
-        try {
-            addressList = geocoder.getFromLocation(location.getLatitude(), location.getLongitude(), 1);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
-        double lat = location.getLatitude();
-        double lon = location.getLongitude();
-        latitude.setText(String.valueOf(lat));
-        longitude.setText(String.valueOf(lon));
 
-
-    }
-
-    @Override
-    public void onStatusChanged(String s, int i, Bundle bundle) {
-
-    }
-
-    @Override
-    public void onProviderEnabled(String s) {
-
-    }
-
-    @Override
-    public void onProviderDisabled(String s) {
-
-    }
 }
